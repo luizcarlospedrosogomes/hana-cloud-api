@@ -1,0 +1,66 @@
+## Generated mta.yaml based on template version 0.4.0
+## appName = api
+## language=nodejs; multiTenant=false
+## approuter=
+_schema-version: '3.1'
+ID: api
+version: 1.0.0
+description: "A simple CAP project."
+parameters:
+  enable-parallel-deployments: true
+   
+build-parameters:
+  before-all:
+   - builder: custom
+     commands:
+      - npm install --production
+      - npx -p @sap/cds-dk cds build --production
+
+modules:
+ # --------------------- SERVER MODULE ------------------------
+ - name: api-srv
+ # ------------------------------------------------------------
+   type: nodejs
+   path: srv
+   requires:
+    # Resources extracted from CAP configuration
+    - name: api-db
+   provides:
+    - name: srv-api      # required by consumers of CAP services (e.g. approuter)
+      properties:
+        srv-url: ${default-url}
+
+ # -------------------- SIDECAR MODULE ------------------------
+ - name: api-db-deployer
+ # ------------------------------------------------------------
+   type: hdb
+   path: db  
+   parameters:
+     buildpack: nodejs_buildpack
+   requires:
+    # 'hana' and 'xsuaa' resources extracted from CAP configuration
+    - name: api-db
+    - name: custom-db
+      group: SERVICE_REPLACEMENTS
+      properties:
+        key: hdi-custom-service
+        service: '~{user-container-name}'
+resources:
+ # services extracted from CAP configuration
+ # 'service-plan' can be configured via 'cds.requires.<name>.vcap.plan'
+# ------------------------------------------------------------
+ - name: api-db
+# ------------------------------------------------------------
+   type: com.sap.xs.hdi-container
+   parameters:
+     service: hana  # or 'hanatrial' on trial landscapes
+     service-plan: hdi-shared
+   properties:
+     hdi-service-name: ${service-name}
+
+  - name: hana-opensap-cloud-2020-user-db
+    type: org.cloudfoundry.existing-service
+   parameters:
+     service-name: CROSS_SCHEMA_SFLIGHT
+   properties:
+     user-contanier-name: '${service-name}'  
